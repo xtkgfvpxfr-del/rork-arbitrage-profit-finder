@@ -7,12 +7,12 @@ import {
   Pressable,
   Animated,
 } from "react-native";
-import { TrendingUp, TrendingDown, Heart, ArrowRight } from "lucide-react-native";
-import { Product } from "@/mocks/products";
+import { TrendingUp, TrendingDown, Heart, ArrowRight, ChevronDown, ChevronUp } from "lucide-react-native";
+import { LiveProduct } from "@/services/priceService";
 import Colors from "@/constants/colors";
 
 interface ProductCardProps {
-  product: Product;
+  product: LiveProduct;
   onPress: () => void;
   onToggleWatch: () => void;
   isWatched: boolean;
@@ -26,6 +26,8 @@ export default function ProductCard({
 }: ProductCardProps) {
   const scaleAnim = React.useRef(new Animated.Value(1)).current;
   const isProfitable = product.profit > 0;
+  const hasAmazonChange = Math.abs(product.amazonPriceChange || 0) > 0.01;
+  const hasEbayChange = Math.abs(product.ebayPriceChange || 0) > 0.01;
 
   const handlePressIn = () => {
     Animated.spring(scaleAnim, {
@@ -39,6 +41,28 @@ export default function ProductCard({
       toValue: 1,
       useNativeDriver: true,
     }).start();
+  };
+
+  const renderPriceChange = (change: number, isAmazon: boolean) => {
+    if (Math.abs(change) < 0.01) return null;
+    
+    const isDown = change < 0;
+    const color = isAmazon 
+      ? (isDown ? Colors.dark.profit : Colors.dark.loss)
+      : (isDown ? Colors.dark.loss : Colors.dark.profit);
+    
+    return (
+      <View style={styles.priceChangeContainer}>
+        {isDown ? (
+          <ChevronDown size={10} color={color} />
+        ) : (
+          <ChevronUp size={10} color={color} />
+        )}
+        <Text style={[styles.priceChangeText, { color }]}>
+          ${Math.abs(change).toFixed(2)}
+        </Text>
+      </View>
+    );
   };
 
   return (
@@ -64,6 +88,12 @@ export default function ProductCard({
               fill={isWatched ? Colors.dark.loss : "transparent"}
             />
           </Pressable>
+          {product.priceDirection === "down" && (
+            <View style={styles.priceDropBadge}>
+              <ChevronDown size={10} color="#fff" />
+              <Text style={styles.priceDropText}>DROP</Text>
+            </View>
+          )}
         </View>
 
         <View style={styles.content}>
@@ -75,12 +105,18 @@ export default function ProductCard({
           <View style={styles.priceFlow}>
             <View style={[styles.priceBadge, styles.amazonBadge]}>
               <Text style={styles.priceLabel}>Amazon</Text>
-              <Text style={styles.priceValue}>${product.amazonPrice.toFixed(2)}</Text>
+              <View style={styles.priceRow}>
+                <Text style={styles.priceValue}>${product.amazonPrice.toFixed(2)}</Text>
+                {hasAmazonChange && renderPriceChange(product.amazonPriceChange, true)}
+              </View>
             </View>
             <ArrowRight size={16} color={Colors.dark.textMuted} />
             <View style={[styles.priceBadge, styles.ebayBadge]}>
               <Text style={styles.priceLabel}>eBay</Text>
-              <Text style={styles.priceValue}>${product.ebayPrice.toFixed(2)}</Text>
+              <View style={styles.priceRow}>
+                <Text style={styles.priceValue}>${product.ebayPrice.toFixed(2)}</Text>
+                {hasEbayChange && renderPriceChange(product.ebayPriceChange, false)}
+              </View>
             </View>
           </View>
 
@@ -146,6 +182,23 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 6,
   },
+  priceDropBadge: {
+    position: "absolute",
+    bottom: 6,
+    left: 6,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: Colors.dark.profit,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    gap: 2,
+  },
+  priceDropText: {
+    fontSize: 8,
+    fontWeight: "700" as const,
+    color: "#fff",
+  },
   content: {
     flex: 1,
     marginLeft: 12,
@@ -187,10 +240,23 @@ const styles = StyleSheet.create({
     fontWeight: "500" as const,
     color: Colors.dark.textSecondary,
   },
+  priceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
   priceValue: {
     fontSize: 12,
     fontWeight: "700" as const,
     color: Colors.dark.text,
+  },
+  priceChangeContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  priceChangeText: {
+    fontSize: 9,
+    fontWeight: "600" as const,
   },
   footer: {
     flexDirection: "row",

@@ -4,6 +4,7 @@ import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { WatchlistProvider } from "@/contexts/WatchlistContext";
+import { ProductsProvider } from "@/contexts/ProductsContext";
 import Colors from "@/constants/colors";
 
 SplashScreen.preventAutoHideAsync();
@@ -44,9 +45,11 @@ export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <WatchlistProvider>
-          <RootLayoutNav />
-        </WatchlistProvider>
+        <ProductsProvider>
+          <WatchlistProvider>
+            <RootLayoutNav />
+          </WatchlistProvider>
+        </ProductsProvider>
       </GestureHandlerRootView>
     </QueryClientProvider>
   );

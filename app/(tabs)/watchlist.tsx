@@ -1,24 +1,34 @@
 import React, { useMemo } from "react";
-import { View, Text, StyleSheet, FlatList } from "react-native";
+import { View, Text, StyleSheet, FlatList, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { Heart, TrendingUp } from "lucide-react-native";
+import { Heart, TrendingUp, Clock } from "lucide-react-native";
 import Colors from "@/constants/colors";
-import { mockProducts } from "@/mocks/products";
 import { useWatchlist } from "@/contexts/WatchlistContext";
+import { useProducts } from "@/contexts/ProductsContext";
 import ProductCard from "@/components/ProductCard";
 
 export default function WatchlistScreen() {
   const router = useRouter();
   const { watchedIds, toggleWatched, isWatched } = useWatchlist();
+  const { products, isLoading, lastUpdatedText } = useProducts();
 
   const watchedProducts = useMemo(() => {
-    return mockProducts.filter((p) => watchedIds.includes(p.id));
-  }, [watchedIds]);
+    return products.filter((p) => watchedIds.includes(p.id));
+  }, [products, watchedIds]);
 
   const totalPotentialProfit = useMemo(() => {
     return watchedProducts.reduce((sum, p) => sum + p.profit, 0);
   }, [watchedProducts]);
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={Colors.dark.profit} />
+        <Text style={styles.loadingText}>Loading watchlist...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -28,6 +38,10 @@ export default function WatchlistScreen() {
           <Text style={styles.subtitle}>
             {watchedProducts.length} items saved
           </Text>
+          <View style={styles.updateInfo}>
+            <Clock size={12} color={Colors.dark.textSecondary} />
+            <Text style={styles.updateText}>Prices updated {lastUpdatedText}</Text>
+          </View>
         </View>
 
         {watchedProducts.length > 0 && (
@@ -82,6 +96,17 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: Colors.dark.background,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 16,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: Colors.dark.textSecondary,
+  },
   header: {
     paddingHorizontal: 16,
     paddingTop: 8,
@@ -96,6 +121,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.dark.textSecondary,
     marginTop: 4,
+  },
+  updateInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 6,
+  },
+  updateText: {
+    fontSize: 12,
+    color: Colors.dark.textSecondary,
   },
   summaryCard: {
     flexDirection: "row",

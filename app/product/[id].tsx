@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React from "react";
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   ScrollView,
   Image,
   Pressable,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
@@ -21,19 +22,30 @@ import {
   Percent,
   ShoppingCart,
   BarChart3,
+  Clock,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react-native";
 import Colors from "@/constants/colors";
-import { mockProducts } from "@/mocks/products";
 import { useWatchlist } from "@/contexts/WatchlistContext";
+import { useProductById, useProducts } from "@/contexts/ProductsContext";
 
 export default function ProductDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { toggleWatched, isWatched } = useWatchlist();
+  const { isLoading, lastUpdatedText } = useProducts();
 
-  const product = useMemo(() => {
-    return mockProducts.find((p) => p.id === id);
-  }, [id]);
+  const product = useProductById(id || "");
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={Colors.dark.profit} />
+        <Text style={styles.loadingText}>Loading product...</Text>
+      </View>
+    );
+  }
 
   if (!product) {
     return (
@@ -50,6 +62,30 @@ export default function ProductDetailScreen() {
 
   const watched = isWatched(product.id);
   const isProfitable = product.profit > 0;
+  const hasAmazonChange = Math.abs(product.amazonPriceChange || 0) > 0.01;
+  const hasEbayChange = Math.abs(product.ebayPriceChange || 0) > 0.01;
+
+  const renderPriceChange = (change: number, isAmazon: boolean) => {
+    if (Math.abs(change) < 0.01) return null;
+    
+    const isDown = change < 0;
+    const color = isAmazon 
+      ? (isDown ? Colors.dark.profit : Colors.dark.loss)
+      : (isDown ? Colors.dark.loss : Colors.dark.profit);
+    
+    return (
+      <View style={styles.priceChangeRow}>
+        {isDown ? (
+          <ChevronDown size={14} color={color} />
+        ) : (
+          <ChevronUp size={14} color={color} />
+        )}
+        <Text style={[styles.priceChangeText, { color }]}>
+          ${Math.abs(change).toFixed(2)} since last update
+        </Text>
+      </View>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -77,11 +113,24 @@ export default function ProductDetailScreen() {
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false}>
+          <View style={styles.updateBanner}>
+            <Clock size={14} color={Colors.dark.textSecondary} />
+            <Text style={styles.updateBannerText}>
+              Prices updated {lastUpdatedText} • Auto-updates every hour
+            </Text>
+          </View>
+
           <View style={styles.imageContainer}>
             <Image source={{ uri: product.image }} style={styles.productImage} />
             <View style={styles.categoryBadge}>
               <Text style={styles.categoryText}>{product.category}</Text>
             </View>
+            {product.priceDirection === "down" && (
+              <View style={styles.priceDropBadge}>
+                <ChevronDown size={12} color="#fff" />
+                <Text style={styles.priceDropText}>PRICE DROP</Text>
+              </View>
+            )}
           </View>
 
           <View style={styles.content}>
@@ -141,6 +190,7 @@ export default function ProductDetailScreen() {
                 <Text style={styles.priceCardValue}>
                   ${product.amazonPrice.toFixed(2)}
                 </Text>
+                {hasAmazonChange && renderPriceChange(product.amazonPriceChange, true)}
                 <View style={styles.priceDetail}>
                   <Text style={styles.priceDetailLabel}>Shipping</Text>
                   <Text style={styles.priceDetailValue}>
@@ -165,6 +215,7 @@ export default function ProductDetailScreen() {
                 <Text style={styles.priceCardValue}>
                   ${product.ebayPrice.toFixed(2)}
                 </Text>
+                {hasEbayChange && renderPriceChange(product.ebayPriceChange, false)}
                 <View style={styles.priceDetail}>
                   <Text style={styles.priceDetailLabel}>eBay Fees (~13%)</Text>
                   <Text style={styles.priceDetailValueNegative}>
@@ -219,7 +270,7 @@ export default function ProductDetailScreen() {
 
             <View style={styles.disclaimer}>
               <Text style={styles.disclaimerText}>
-                * Prices and fees are estimates. Actual profits may vary based on shipping costs, condition, and market fluctuations.
+                * Prices are live and update automatically every hour. Actual profits may vary based on shipping costs, condition, and market fluctuations.
               </Text>
             </View>
           </View>
@@ -236,6 +287,17 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: Colors.dark.background,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 16,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: Colors.dark.textSecondary,
   },
   errorContainer: {
     flex: 1,
@@ -279,6 +341,24 @@ const styles = StyleSheet.create({
     fontWeight: "600" as const,
     color: Colors.dark.text,
   },
+  updateBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    marginHorizontal: 16,
+    marginBottom: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: Colors.dark.card,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.dark.border,
+  },
+  updateBannerText: {
+    fontSize: 12,
+    color: Colors.dark.textSecondary,
+  },
   imageContainer: {
     position: "relative",
     marginHorizontal: 16,
@@ -303,6 +383,23 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "600" as const,
     color: Colors.dark.text,
+  },
+  priceDropBadge: {
+    position: "absolute",
+    top: 16,
+    right: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: Colors.dark.profit,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 4,
+  },
+  priceDropText: {
+    fontSize: 10,
+    fontWeight: "700" as const,
+    color: "#fff",
   },
   content: {
     paddingHorizontal: 16,
@@ -425,7 +522,16 @@ const styles = StyleSheet.create({
     fontWeight: "700" as const,
     color: Colors.dark.text,
     marginTop: 8,
-    marginBottom: 12,
+    marginBottom: 4,
+  },
+  priceChangeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  priceChangeText: {
+    fontSize: 12,
+    fontWeight: "500" as const,
   },
   priceDetail: {
     flexDirection: "row",

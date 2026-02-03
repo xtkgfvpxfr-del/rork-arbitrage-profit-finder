@@ -6,13 +6,15 @@ import {
   TextInput,
   FlatList,
   Pressable,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { Search, X, SlidersHorizontal } from "lucide-react-native";
+import { Search, X, SlidersHorizontal, Clock } from "lucide-react-native";
 import Colors from "@/constants/colors";
-import { mockProducts, categories } from "@/mocks/products";
+import { categories } from "@/mocks/products";
 import { useWatchlist } from "@/contexts/WatchlistContext";
+import { useProducts } from "@/contexts/ProductsContext";
 import ProductCard from "@/components/ProductCard";
 
 type SortOption = "roi" | "profit" | "price";
@@ -20,17 +22,18 @@ type SortOption = "roi" | "profit" | "price";
 export default function SearchScreen() {
   const router = useRouter();
   const { toggleWatched, isWatched } = useWatchlist();
+  const { products, isLoading, lastUpdatedText } = useProducts();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [sortBy, setSortBy] = useState<SortOption>("roi");
   const [showFilters, setShowFilters] = useState(false);
 
   const filteredProducts = useMemo(() => {
-    let products = [...mockProducts];
+    let filtered = [...products];
 
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      products = products.filter(
+      filtered = filtered.filter(
         (p) =>
           p.name.toLowerCase().includes(query) ||
           p.category.toLowerCase().includes(query)
@@ -38,29 +41,42 @@ export default function SearchScreen() {
     }
 
     if (selectedCategory !== "All") {
-      products = products.filter((p) => p.category === selectedCategory);
+      filtered = filtered.filter((p) => p.category === selectedCategory);
     }
 
     switch (sortBy) {
       case "roi":
-        products.sort((a, b) => b.roi - a.roi);
+        filtered.sort((a, b) => b.roi - a.roi);
         break;
       case "profit":
-        products.sort((a, b) => b.profit - a.profit);
+        filtered.sort((a, b) => b.profit - a.profit);
         break;
       case "price":
-        products.sort((a, b) => a.amazonPrice - b.amazonPrice);
+        filtered.sort((a, b) => a.amazonPrice - b.amazonPrice);
         break;
     }
 
-    return products;
-  }, [searchQuery, selectedCategory, sortBy]);
+    return filtered;
+  }, [products, searchQuery, selectedCategory, sortBy]);
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={Colors.dark.profit} />
+        <Text style={styles.loadingText}>Loading products...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
       <SafeAreaView edges={["top"]} style={styles.safeArea}>
         <View style={styles.header}>
           <Text style={styles.title}>Search Products</Text>
+          <View style={styles.updateInfo}>
+            <Clock size={12} color={Colors.dark.textSecondary} />
+            <Text style={styles.updateText}>Updated {lastUpdatedText}</Text>
+          </View>
         </View>
 
         <View style={styles.searchContainer}>
@@ -183,6 +199,17 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: Colors.dark.background,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 16,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: Colors.dark.textSecondary,
+  },
   header: {
     paddingHorizontal: 16,
     paddingTop: 8,
@@ -192,6 +219,16 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: "700" as const,
     color: Colors.dark.text,
+  },
+  updateInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 4,
+  },
+  updateText: {
+    fontSize: 12,
+    color: Colors.dark.textSecondary,
   },
   searchContainer: {
     flexDirection: "row",
