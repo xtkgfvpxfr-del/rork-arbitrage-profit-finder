@@ -28,6 +28,7 @@ import {
   Star,
 } from "lucide-react-native";
 import Colors from "@/constants/colors";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface MenuItemProps {
   icon: React.ReactNode;
@@ -99,6 +100,7 @@ const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
 ];
 
 export default function ProfileScreen() {
+  const { user, logout } = useAuth();
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
   const [showNotificationsModal, setShowNotificationsModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -186,8 +188,8 @@ export default function ProfileScreen() {
         { 
           text: 'Sign Out', 
           style: 'destructive',
-          onPress: () => {
-            Alert.alert('Signed Out', 'You have been successfully signed out.');
+          onPress: async () => {
+            await logout();
           }
         },
       ]
@@ -424,8 +426,8 @@ export default function ProfileScreen() {
               </View>
             </View>
             <View style={styles.profileInfo}>
-              <Text style={styles.profileName}>Alex Johnson</Text>
-              <Text style={styles.profileEmail}>alex@arbitrage.pro</Text>
+              <Text style={styles.profileName}>{user?.name || 'Alex Johnson'}</Text>
+              <Text style={styles.profileEmail}>{user?.email || 'alex@arbitrage.pro'}</Text>
               <View style={styles.proPill}>
                 <Crown size={12} color={Colors.dark.amazon} />
                 <Text style={styles.proText}>PRO Member</Text>
