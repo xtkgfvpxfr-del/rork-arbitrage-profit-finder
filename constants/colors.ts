@@ -1,0 +1,22 @@
+export default {
+  dark: {
+    background: "#0D0F14",
+    surface: "#161A22",
+    surfaceLight: "#1E232D",
+    card: "#1A1F28",
+    border: "#2A303C",
+    text: "#FFFFFF",
+    textSecondary: "#8A919E",
+    textMuted: "#5A6170",
+    profit: "#00D084",
+    profitLight: "#00D08420",
+    loss: "#FF4757",
+    lossLight: "#FF475720",
+    amazon: "#FF9900",
+    amazonLight: "#FF990020",
+    ebay: "#0064D2",
+    ebayLight: "#0064D220",
+    accent: "#6C5CE7",
+    accentLight: "#6C5CE720",
+  },
+};
