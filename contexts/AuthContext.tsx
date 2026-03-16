@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import createContextHook from '@nkzw/create-context-hook';
 
@@ -16,6 +16,7 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
+  loginWithApple: (name: string, email: string) => Promise<boolean>;
   logout: () => Promise<void>;
 }
 
@@ -24,25 +25,23 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    loadStoredAuth();
+    void (async () => {
+      try {
+        const stored = await AsyncStorage.getItem(AUTH_STORAGE_KEY);
+        if (stored) {
+          const parsedUser = JSON.parse(stored);
+          setUser(parsedUser);
+          console.log('Auth loaded from storage:', parsedUser.email);
+        }
+      } catch (error) {
+        console.error('Failed to load auth:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    })();
   }, []);
 
-  const loadStoredAuth = async () => {
-    try {
-      const stored = await AsyncStorage.getItem(AUTH_STORAGE_KEY);
-      if (stored) {
-        const parsedUser = JSON.parse(stored);
-        setUser(parsedUser);
-        console.log('Auth loaded from storage:', parsedUser.email);
-      }
-    } catch (error) {
-      console.error('Failed to load auth:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = useCallback(async (email: string, password: string): Promise<boolean> => {
     try {
       console.log('Attempting login for:', email);
       
@@ -66,9 +65,9 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
       console.error('Login error:', error);
       return false;
     }
-  };
+  }, []);
 
-  const logout = async (): Promise<void> => {
+  const logout = useCallback(async (): Promise<void> => {
     try {
       console.log('Logging out...');
       await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
@@ -77,13 +76,33 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
     } catch (error) {
       console.error('Logout error:', error);
     }
-  };
+  }, []);
 
-  return {
+  const loginWithApple = useCallback(async (name: string, email: string): Promise<boolean> => {
+    try {
+      console.log('Attempting Apple login for:', email || 'hidden email');
+      const newUser: User = {
+        id: 'apple_' + Date.now(),
+        name: name || 'Apple User',
+        email: email || 'apple@privaterelay.appleid.com',
+        avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200',
+      };
+      await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(newUser));
+      setUser(newUser);
+      console.log('Apple login successful');
+      return true;
+    } catch (error) {
+      console.error('Apple login error:', error);
+      return false;
+    }
+  }, []);
+
+  return useMemo(() => ({
     user,
     isAuthenticated: !!user,
     isLoading,
     login,
+    loginWithApple,
     logout,
-  };
+  }), [user, isLoading, login, loginWithApple, logout]);
 });

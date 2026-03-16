@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -14,17 +14,19 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { TrendingUp, Mail, Lock, ArrowRight } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
+import * as AppleAuthentication from 'expo-apple-authentication';
 import { useAuth } from '@/contexts/AuthContext';
 import Colors from '@/constants/colors';
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, loginWithApple } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isAppleLoading, setIsAppleLoading] = useState(false);
 
-  const handleLogin = async () => {
+  const handleLogin = useCallback(async () => {
     if (!email.trim()) {
       Alert.alert('Error', 'Please enter your email');
       return;
@@ -47,6 +49,78 @@ export default function LoginScreen() {
     } finally {
       setIsLoading(false);
     }
+  }, [email, password, login, router]);
+
+  const handleAppleLogin = useCallback(async () => {
+    setIsAppleLoading(true);
+    try {
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+
+      const fullName = credential.fullName
+        ? `${credential.fullName.givenName ?? ''} ${credential.fullName.familyName ?? ''}`.trim()
+        : '';
+      const appleEmail = credential.email ?? '';
+
+      console.log('Apple credential received:', { fullName, email: appleEmail });
+
+      const success = await loginWithApple(fullName, appleEmail);
+      if (success) {
+        router.replace('/(tabs)');
+      } else {
+        Alert.alert('Error', 'Apple sign in failed. Please try again.');
+      }
+    } catch (error: unknown) {
+      const err = error as { code?: string };
+      if (err.code === 'ERR_REQUEST_CANCELED') {
+        console.log('Apple sign in was canceled');
+      } else {
+        console.error('Apple sign in error:', error);
+        Alert.alert('Error', 'Apple sign in failed. Please try again.');
+      }
+    } finally {
+      setIsAppleLoading(false);
+    }
+  }, [loginWithApple, router]);
+
+  const renderAppleButton = () => {
+    if (Platform.OS === 'ios') {
+      return (
+        <AppleAuthentication.AppleAuthenticationButton
+          buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+          buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
+          cornerRadius={14}
+          style={styles.appleButtonNative}
+          onPress={handleAppleLogin}
+        />
+      );
+    }
+
+    return (
+      <Pressable
+        style={({ pressed }) => [
+          styles.appleButton,
+          pressed && styles.appleButtonPressed,
+          isAppleLoading && styles.loginButtonDisabled,
+        ]}
+        onPress={handleAppleLogin}
+        disabled={isAppleLoading}
+        testID="apple-sign-in"
+      >
+        {isAppleLoading ? (
+          <ActivityIndicator color="#000" />
+        ) : (
+          <>
+            <Text style={styles.appleIcon}></Text>
+            <Text style={styles.appleButtonText}>Sign in with Apple</Text>
+          </>
+        )}
+      </Pressable>
+    );
   };
 
   return (
@@ -87,6 +161,7 @@ export default function LoginScreen() {
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
+                testID="email-input"
               />
             </View>
 
@@ -99,6 +174,7 @@ export default function LoginScreen() {
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry
+                testID="password-input"
               />
             </View>
 
@@ -110,6 +186,7 @@ export default function LoginScreen() {
               ]}
               onPress={handleLogin}
               disabled={isLoading}
+              testID="sign-in-button"
             >
               {isLoading ? (
                 <ActivityIndicator color="#fff" />
@@ -124,6 +201,14 @@ export default function LoginScreen() {
             <Pressable style={styles.forgotButton}>
               <Text style={styles.forgotText}>Forgot password?</Text>
             </Pressable>
+
+            <View style={styles.dividerContainer}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>or</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            {renderAppleButton()}
           </View>
 
           <View style={styles.footer}>
@@ -231,6 +316,49 @@ const styles = StyleSheet.create({
   forgotText: {
     fontSize: 14,
     color: Colors.dark.textSecondary,
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 4,
+    gap: 12,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: Colors.dark.border,
+  },
+  dividerText: {
+    fontSize: 13,
+    color: Colors.dark.textMuted,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 1,
+  },
+  appleButtonNative: {
+    height: 52,
+    width: '100%',
+    borderRadius: 14,
+  },
+  appleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    paddingVertical: 15,
+    gap: 8,
+  },
+  appleButtonPressed: {
+    opacity: 0.85,
+  },
+  appleIcon: {
+    fontSize: 20,
+    color: '#000',
+  },
+  appleButtonText: {
+    fontSize: 17,
+    fontWeight: '600' as const,
+    color: '#000',
   },
   footer: {
     flexDirection: 'row',
