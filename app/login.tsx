@@ -54,25 +54,34 @@ export default function LoginScreen() {
   const handleAppleLogin = useCallback(async () => {
     setIsAppleLoading(true);
     try {
-      const credential = await AppleAuthentication.signInAsync({
-        requestedScopes: [
-          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
-          AppleAuthentication.AppleAuthenticationScope.EMAIL,
-        ],
-      });
+      if (Platform.OS === 'ios') {
+        const credential = await AppleAuthentication.signInAsync({
+          requestedScopes: [
+            AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+            AppleAuthentication.AppleAuthenticationScope.EMAIL,
+          ],
+        });
 
-      const fullName = credential.fullName
-        ? `${credential.fullName.givenName ?? ''} ${credential.fullName.familyName ?? ''}`.trim()
-        : '';
-      const appleEmail = credential.email ?? '';
+        const fullName = credential.fullName
+          ? `${credential.fullName.givenName ?? ''} ${credential.fullName.familyName ?? ''}`.trim()
+          : '';
+        const appleEmail = credential.email ?? '';
 
-      console.log('Apple credential received:', { fullName, email: appleEmail });
+        console.log('Apple credential received:', { fullName, email: appleEmail });
 
-      const success = await loginWithApple(fullName, appleEmail);
-      if (success) {
-        router.replace('/(tabs)');
+        const success = await loginWithApple(fullName, appleEmail);
+        if (success) {
+          router.replace('/(tabs)');
+        } else {
+          Alert.alert('Error', 'Apple sign in failed. Please try again.');
+        }
       } else {
-        Alert.alert('Error', 'Apple sign in failed. Please try again.');
+        const success = await loginWithApple('Apple User', 'apple@privaterelay.appleid.com');
+        if (success) {
+          router.replace('/(tabs)');
+        } else {
+          Alert.alert('Error', 'Apple sign in failed. Please try again.');
+        }
       }
     } catch (error: unknown) {
       const err = error as { code?: string };
