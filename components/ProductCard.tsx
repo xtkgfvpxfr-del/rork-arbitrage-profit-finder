@@ -76,10 +76,10 @@ export default function ProductCard({
         <View style={styles.imageContainer}>
           <Image source={{ uri: product.image }} style={styles.image} />
           <Pressable
-            onPress={(e) => {
-              e.stopPropagation();
+            onPress={() => {
               onToggleWatch();
             }}
+            hitSlop={8}
             style={styles.heartButton}
           >
             <Heart

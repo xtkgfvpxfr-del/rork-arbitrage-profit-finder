@@ -9,7 +9,7 @@ import { ProductsProvider } from "@/contexts/ProductsContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import Colors from "@/constants/colors";
 
-SplashScreen.preventAutoHideAsync();
+void SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient();
 
@@ -30,7 +30,7 @@ function RootLayoutNav() {
       console.log('Authenticated, redirecting to tabs');
       router.replace('/(tabs)');
     }
-  }, [isAuthenticated, isLoading, segments]);
+  }, [isAuthenticated, isLoading, segments, router]);
 
   if (isLoading) {
     return (
@@ -62,6 +62,7 @@ function RootLayoutNav() {
           presentation: "card",
         }}
       />
+      <Stack.Screen name="+not-found" />
     </Stack>
   );
 }
@@ -77,7 +78,7 @@ const styles = StyleSheet.create({
 
 export default function RootLayout() {
   useEffect(() => {
-    SplashScreen.hideAsync();
+    void SplashScreen.hideAsync();
   }, []);
 
   return (

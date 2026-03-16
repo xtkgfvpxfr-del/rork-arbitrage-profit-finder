@@ -6,7 +6,6 @@ import {
   TextInput,
   Pressable,
   KeyboardAvoidingView,
-  Platform,
   ActivityIndicator,
   Alert,
 } from 'react-native';
@@ -14,7 +13,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { TrendingUp, Mail, Lock, ArrowRight } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
-import * as AppleAuthentication from 'expo-apple-authentication';
+import { Platform } from 'react-native';
+// Conditionally import to avoid web crash
+let AppleAuthentication: any = null;
+if (Platform.OS === 'ios') {
+  AppleAuthentication = require('expo-apple-authentication');
+}
 import { useAuth } from '@/contexts/AuthContext';
 import Colors from '@/constants/colors';
 
@@ -54,7 +58,7 @@ export default function LoginScreen() {
   const handleAppleLogin = useCallback(async () => {
     setIsAppleLoading(true);
     try {
-      if (Platform.OS === 'ios') {
+      if (Platform.OS === 'ios' && AppleAuthentication) {
         const credential = await AppleAuthentication.signInAsync({
           requestedScopes: [
             AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
@@ -97,7 +101,7 @@ export default function LoginScreen() {
   }, [loginWithApple, router]);
 
   const renderAppleButton = () => {
-    if (Platform.OS === 'ios') {
+    if (Platform.OS === 'ios' && AppleAuthentication) {
       return (
         <AppleAuthentication.AppleAuthenticationButton
           buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
@@ -222,7 +226,9 @@ export default function LoginScreen() {
 
           <View style={styles.footer}>
             <Text style={styles.footerText}>Don't have an account?</Text>
-            <Pressable onPress={handleLogin}>
+            <Pressable onPress={() => {
+              Alert.alert('Sign Up', 'Enter any email and 4+ character password above, then tap Sign In to create your account.');
+            }}>
               <Text style={styles.signUpText}>Sign up free</Text>
             </Pressable>
           </View>
